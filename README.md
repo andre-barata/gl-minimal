@@ -20,6 +20,6 @@ Project paths:
  |  |  |- winres.rc  -- when compiling on windows, resourse file defining the main icon and executable metadata
  |  |- *.*           -- any binary files to pack in the executable go here
  |- obj/             -- temporary object and resource files generated and used during compilation
- |- Makefile         -- this file
+ |- Makefile         -- used for Make
  |- *.exe            -- ouput executable goes here
 ```
