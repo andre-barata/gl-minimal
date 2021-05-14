@@ -29,7 +29,7 @@ int main(int argc, char *argv[]) {
         size, -size, -size,
         -size, -size, -size,
 
-        -size, 0, size,
+        -size, size, size,
         -size, size, size,
         size, size, size,
         size, size, size,
@@ -52,24 +52,26 @@ int main(int argc, char *argv[]) {
     glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(GL_FLOAT), NULL);
     glEnableVertexAttribArray(0);
 
-/*
-glm_translate(m, pivot);
-glm_rotate(m, angle, axis);
-glm_translate(m, pivotInv); /* pivotInv = -pivot */
-
-/*
-vec4 vec = {1.0f, 0.0f, 0.0f, 1.0f};
-mat4 trans = GLM_MAT4_IDENTITY_INIT;
-trans = glm_translate(trans, (vec3){1.0f, 1.0f, 0.0f});
-vec = trans * vec;
-std::cout << vec.x << vec.y << vec.z << std::endl;
-*/
+    mat4 mvpMatrix;
+    {
+        // make MVP - implements glm::perspective(fov, aspect, zNear, zFar) * glm::lookAt(pos, pos + forward, up);
+        vec3 positionVector = {0.0f, 0.0f, -1.0f};
+        vec3 forwardVector = {0.0f, 0.0f, 0.1f};
+        vec3 projectionVector;
+        glm_vec3_add(positionVector, forwardVector, projectionVector);
+        mat4 viewDirectionMatrix;
+        glm_lookat(positionVector, projectionVector, (vec3){0.0f, 1.0f, 0.0f}, viewDirectionMatrix);
+        mat4 perspectiveMatrix;
+        glm_perspective(/*fov*/70.0f, /*aspectRatio*/(float)windowWidth/(float)windowHeight, /*near*/0.1f, /*far*/100.0f, perspectiveMatrix);
+        glm_mul(perspectiveMatrix, viewDirectionMatrix, mvpMatrix);
+    }
 
     // Compile Shaders and set Gl pipeline
     const GLchar* vertexShaderCode = "#version 330 core\n" CODE(
-        layout (location = 0) in vec3 aPos;
+        layout (location = 0) in vec3 pos;
+        uniform mat4 mvp;
         void main() {
-            gl_Position = vec4(aPos.x, aPos.y, aPos.z, 1.0);
+            gl_Position = mvp * vec4(pos, 1.0);
         }
     );
     const GLchar* fragmentShaderCode = "#version 330 core\n" CODE(
@@ -80,6 +82,11 @@ std::cout << vec.x << vec.y << vec.z << std::endl;
     );
     unsigned int program = createGlProgram(vertexShaderCode, fragmentShaderCode);
     if (program == false) return terminate();
+
+
+    // get uniforms
+    GLuint uniforms[1] = { glGetUniformLocation(program, "mvp") };
+
 
     // enable alpha blending
     glEnable(GL_BLEND);
@@ -97,6 +104,40 @@ std::cout << vec.x << vec.y << vec.z << std::endl;
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
         glUseProgram(program);
         glBindVertexArray(vao);
+
+        static float rot; rot += 0.01f;
+
+        mat4 transformMatrix;
+        {
+            // make transform
+            mat4 positionMatrix, scaleMatrix, xRotaionMatrix, yRotaionMatrix, zRotaionMatrix, rotaionMatrix;
+            glm_translate_make(positionMatrix, (vec3){0.0f, 0.0f, 0.0f});
+            glm_scale_make(scaleMatrix, (vec3){1.0f, 1.0f, 1.0f});
+            glm_rotate_make(xRotaionMatrix, rot, (vec3){1.0f, 0.0f, 0.0f});
+            glm_rotate_make(yRotaionMatrix, rot, (vec3){0.0f, 1.0f, 0.0f});
+            glm_rotate_make(zRotaionMatrix, rot, (vec3){0.0f, 0.0f, 1.0f});
+            glm_mat4_mulN((mat4 *[]){&xRotaionMatrix, &yRotaionMatrix, &zRotaionMatrix}, 3, rotaionMatrix);
+            glm_mat4_mulN((mat4 *[]){&positionMatrix, &rotaionMatrix, &scaleMatrix}, 3, transformMatrix);
+        }
+        
+        glm_mul(transformMatrix, mvpMatrix, transformMatrix);
+        // assign transform uniform
+        glUniformMatrix4fv(uniforms[0], 1, GL_FALSE, &transformMatrix[0][0]);
+/*
+    glm::mat4 posMat = glm::translate(pos);
+    glm::mat4 scaleMat = glm::scale(scale);
+    glm::mat4 rotX = glm::rotate(rot.x, glm::vec3(1.0, 0.0, 0.0));
+    glm::mat4 rotY = glm::rotate(rot.y, glm::vec3(0.0, 1.0, 0.0));
+    glm::mat4 rotZ = glm::rotate(rot.z, glm::vec3(0.0, 0.0, 1.0));
+    glm::mat4 rotMat = rotX * rotY * rotZ;
+/*
+glm_translate(m, pivot);
+glm_rotate(m, angle, axis);
+glm_translate(m, pivotInv); /* pivotInv = -pivot
+*/
+
+
+
         glDrawArrays(GL_TRIANGLES, 0, 12);
         SDL_GL_SwapWindow(mainWindow);
     }

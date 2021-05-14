@@ -1,6 +1,6 @@
 {
-    "msys.path":"C:\\msys64",
-    "terminal.integrated.shell.windows": "${config:msys.path}/usr/bin/bash.exe",
+    "msys.path":"${env:MSYS2PATH}",
+    "terminal.integrated.shell.windows": "d:/dev/msys64/usr/bin/bash.exe",
     "terminal.integrated.shellArgs.windows": [
         "--login", "-i"
     ],
